@@ -1,5 +1,5 @@
-# Driver_V3.2
-Motor Driver V3. OLED zoom in 2 byte version.
+# Driver_V4.0
+Motor Driver V4.0 Test Version
 
 If compile with Arduino 2.0  
 -install library list in platformio.ini
