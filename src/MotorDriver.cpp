@@ -1,7 +1,10 @@
 #include "MotorDriver.h"
 #include "RGBLED.h"
+#include "AS5600.h"
+#include "Wire.h"
 
 MotorDriverSpeed MDSpeed;
+AS5600 as5600;
 
 void IRAM_ATTR MD_Speed_ISR()
 {
@@ -23,7 +26,7 @@ void IRAM_ATTR MD_Speed_ISR()
     }
 }
 
-void MotorDriver::Initialize(byte IO_V, byte IO_Dir, byte IO_Brak, byte IO_V_FB, byte IO_I_FB, byte IO_SW)
+void MotorDriver::Initialize(byte IO_V, byte IO_Dir, byte IO_Brak, byte IO_V_FB, byte IO_I_FB, byte IO_SW, byte IO_EN_Dir)
 {
     MD_Brak = IO_Brak;
     MD_Dir = IO_Dir;
@@ -41,6 +44,12 @@ void MotorDriver::Initialize(byte IO_V, byte IO_Dir, byte IO_Brak, byte IO_V_FB,
     digitalWrite(IO_Brak, LOW);
     digitalWrite(MD_Dir, LOW);
     attachInterrupt(digitalPinToInterrupt(IO_V_FB), MD_Speed_ISR, RISING);
+    // as5600
+    as5600.begin(IO_EN_Dir);
+    as5600.setDirection(AS5600_CLOCK_WISE); // default
+    int b = as5600.isConnected();
+    Serial.print("Connect: ");
+    Serial.println(b);
 }
 
 void MotorDriver::Check_Connect()
@@ -62,6 +71,8 @@ void MotorDriver::Check_Connect()
 void MotorDriver::AccControl()
 {
     Update_Feedback();
+    Serial.print("\tω = ");
+    Serial.println(as5600.getAngularSpeed());
     if (Vc != 0)
     {
         u_out = Vc * VrtoVl / 4.0 + 0.5;
@@ -139,8 +150,8 @@ void MotorDriver::AccControl()
 bool MotorDriver::Output(float AngularVelocity)
 {
     LED.Write(2, 0, 0, 256, LED.BLINK30);
-    Vc = -AngularVelocity * H * cos(MountedAngle); // if MountedAngle is a constant. (Assume Angle[0] ~ 90)
-    // float LinearVelocity = - AngularVelocity * H * sin(Angle[0]*PI/180.0 - MountedAngle); // if MountedAngle can be measure
+    // Vc = -AngularVelocity * H * cos(MountedAngle); // if MountedAngle is a constant. (Assume Angle[0] ~ 90)
+    Vc = - AngularVelocity * H * sin((WallAngle - *MountedAngle)*PI/180); // if MountedAngle can be measure
     if (Vc == 0 || abs(Vc) < MinimumVelocity)
     {
         u_out = 0;

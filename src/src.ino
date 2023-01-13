@@ -5,6 +5,7 @@ const byte IO_MD_V_FB = 7; //
 const byte IO_MD_Dir = 6;  // OutPut, PH
 const byte IO_MD_V = 16;   // Output, EN
 const byte IO_MD_Swich = 18;
+const byte IO_MD_EN_Dir = 19;// Temp !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 const byte IO_MD_Brak = 48; // Output, LOW to wake up, HIGH to sleep.
 const byte IO_SD_MOSI = 12;
 const byte IO_SD_MISO = 13;
@@ -14,6 +15,7 @@ const byte IO_Battery = 17;
 const byte IO_Button_CL = 40;
 const byte IO_Button_DT = 41;
 #define LED_PIN 42
+#define OLED_RST 8
 
 // IMU with Serial0
 #include "MotorDriver.h"
@@ -22,6 +24,7 @@ const byte IO_Button_DT = 41;
 #include "Clock.h"
 #include "OnOff.h"
 #include "Battery.h"
+#include "IMU42688.h"
 
 #include "SerialDebug.h"
 SerialDebug Extern_Serial_Debug;
@@ -32,6 +35,7 @@ extern RGBLED LED = Extern_RGB_LED;
 byte Page = 2;
 byte Cursor = 0;
 
+IMU42688 imu;
 MotorDriver MD;
 OLED oled;
 Clock L_clock;
@@ -86,12 +90,17 @@ static void Check(void *pvParameter)
 
 static void MDCON(void *pvParameter)
 {
+  TickType_t xLastWakeTime;
+  BaseType_t xWasDelayed;
+  xLastWakeTime = xTaskGetTickCount();
   for (;;)
   {
+    xWasDelayed = xTaskDelayUntil(&xLastWakeTime, StepTime/2);
+    if (!xWasDelayed)
+      Debug.println("[Warning] Task MDCON Time Out.");
+    imu.Update();
     MD.Check_Connect();
     MD.AccControl();
-    vTaskDelay(1000);
-    // vTaskDelay(StepTime / 5);
   }
 }
 
@@ -147,7 +156,8 @@ void setup()
   Swich.pMD = &MD;
   Debug.Setup(sdCard);
   Debug.printOnTop("-------------------------ESP_Start-------------------------");
-  MD.Initialize(IO_MD_V, IO_MD_Dir, IO_MD_Brak, IO_MD_V_FB, IO_MD_I_FB, IO_MD_Swich);
+  MD.Initialize(IO_MD_V, IO_MD_Dir, IO_MD_Brak, IO_MD_V_FB, IO_MD_I_FB, IO_MD_Swich, IO_MD_EN_Dir);
+  MD.MountedAngle = &imu.Angle[0];
   battery.SetPin(IO_Battery);
   oled.pMD = &MD;
   oled.Battery = &battery.Percent;
@@ -157,7 +167,7 @@ void setup()
   oled.Address = &Address;
   oled.pMD_C_show = &MD_Last_Recieve;
   oled.Angle = &Angle;
-  xTaskCreatePinnedToCore(MDCON, "MDCont", 2048, NULL, 5, &T_MDCON, 1);
+  xTaskCreatePinnedToCore(MDCON, "MDCont", 10000, NULL, 5, &T_MDCON, 1);
   xTaskCreatePinnedToCore(Fast, "Fast", 10000, NULL, 2, &T_FAST, 1);
   xTaskCreatePinnedToCore(Loop, "Main", 10000, NULL, 3, &T_LOOP, 1);
   xTaskCreatePinnedToCore(Back, "BackGround", 10000, NULL, 1, &T_BACK, 1);

@@ -65,10 +65,11 @@ public:
     int Current = -1;
     int H = 1500; // mm
     int D = 860;  // mm
-    double MountedAngle = atan2(H, D);
+    float* MountedAngle;
+    float WallAngle = 90;
     MotorDriverSpeed *SpeedFB;
 
-    void Initialize(byte IO_V, byte IO_Dir, byte IO_Brak, byte IO_V_FB, byte IO_I_FB, byte IO_SW);
+    void Initialize(byte IO_V, byte IO_Dir, byte IO_Brak, byte IO_V_FB, byte IO_I_FB, byte IO_SW, byte IO_EN_Dir);
     void AccControl();
     bool Output(float AngularVelocity);
     bool Manual(double Speed);

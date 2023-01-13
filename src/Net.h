@@ -9,15 +9,16 @@
 #include "SerialDebug.h"
 
 BLEUUID ServersUUID("2222eeee-00f2-0123-4567-abcdef123456");
-BLEUUID ServiceUUID("1111eeee-00f2-0123-4567-abcdef123456");
+BLEUUID ServiceUUID("1111eeee-00f4-0123-4567-abcdef123456");
 BLEUUID RollAngUUID("a001eeee-00f2-0123-4567-abcdef123456");
 BLEUUID PitcAngUUID("a002eeee-00f2-0123-4567-abcdef123456");
 BLEUUID YawwAngUUID("a003eeee-00f2-0123-4567-abcdef123456");
 BLEUUID NodeNumUUID("0000eeee-00f2-0123-4567-abcdef123456");
-BLEUUID CommandUUID("c000eeee-00f2-0123-4567-abcdef123456");
-BLEUUID TimeStpUUID("c001eeee-00f2-0123-4567-abcdef123456");
-BLEUUID TimeSetUUID("c002eeee-00f2-0123-4567-abcdef123456");
-BLEUUID HaveSubUUID("d155eeee-00f2-0123-4567-abcdef123456");
+BLEUUID CommandUUID("c000eeee-00f4-0123-4567-abcdef123456");
+BLEUUID TimeStpUUID("c001eeee-00f4-0123-4567-abcdef123456");
+BLEUUID TimeSetUUID("c002eeee-00f4-0123-4567-abcdef123456");
+BLEUUID HaveSubUUID("d155eeee-00f4-0123-4567-abcdef123456");
+BLEUUID WallAngUUID("a004eeee-00f4-0123-4567-abcdef123456");
 
 BLECharacteristic *RollAngChar;
 BLECharacteristic *PitcAngChar;
@@ -27,6 +28,7 @@ BLECharacteristic *CommandChar;
 BLECharacteristic *RemTimeChar;
 BLECharacteristic *SetTimeChar;
 BLECharacteristic *HaveSubChar;
+BLECharacteristic *WallAngChar;
 
 BLERemoteCharacteristic *SubRollAng;
 BLERemoteCharacteristic *SubPitcAng;
@@ -41,6 +43,7 @@ BLE2904 *p2904IntTimRem = new BLE2904();
 BLE2904 *p2904IntHavSub = new BLE2904();
 BLE2904 *p2904StrNodeID = new BLE2904();
 BLE2904 *p2904StrSetTim = new BLE2904();
+BLE2904 *p2904WallAngle = new BLE2904();
 
 TaskHandle_t COMMAND_TIMER;
 int StepTime = 100;
@@ -145,6 +148,14 @@ class NodeNumCallBacks : public BLECharacteristicCallbacks
             SubNodeNum->writeValue(Address[1]);
         }
         LED.Write(1, 0, 0, 255, LED.LIGHT30);
+    }
+};
+
+class WallAngCallBacks : public BLECharacteristicCallbacks
+{
+    void onWrite(BLECharacteristic *pCharacteristic)
+    {
+        MD.WallAngle = pCharacteristic->getValue<float>();
     }
 };
 
@@ -255,10 +266,12 @@ void Server_Initialize()
     RemTimeChar = pService->createCharacteristic(TimeStpUUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE);
     SetTimeChar = pService->createCharacteristic(TimeSetUUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE);
     HaveSubChar = pService->createCharacteristic(HaveSubUUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+    WallAngChar = pService->createCharacteristic(WallAngUUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE);
 
     // Set Characteristic Callback
     NodeNumChar->setCallbacks(new NodeNumCallBacks());
     CommandChar->setCallbacks(new CommandCallBacks());
+    WallAngChar->setCallbacks(new WallAngCallBacks());
     RemTimeChar->setCallbacks(new RemTimeCallBacks());
     SetTimeChar->setCallbacks(new SetTimeCallBecks());
 
@@ -272,6 +285,7 @@ void Server_Initialize()
     RemTimeChar->createDescriptor("2901", NIMBLE_PROPERTY::READ, 30)->setValue("Command Period");
     SetTimeChar->createDescriptor("2901", NIMBLE_PROPERTY::READ, 30)->setValue("Set Time");
     HaveSubChar->createDescriptor("2901", NIMBLE_PROPERTY::READ, 30)->setValue("Have Sub Sensor Connected ?");
+    WallAngChar->createDescriptor("2901", NIMBLE_PROPERTY::READ, 30)->setValue("Average Wall Angle");
 
     // Set input type and unit
 
@@ -283,11 +297,13 @@ void Server_Initialize()
     p2904IntTimRem->setFormat(p2904IntTimRem->FORMAT_UINT16);
     p2904StrSetTim->setFormat(p2904StrSetTim->FORMAT_UTF8);
     p2904IntHavSub->setFormat(p2904IntHavSub->FORMAT_UINT16);
+    p2904WallAngle->setFormat(p2904CommOmega->FORMAT_FLOAT32);
 
     p2904AngleRoll->setUnit(0x2763);
     p2904AnglePitc->setUnit(0x2763);
     p2904AngleYaww->setUnit(0x2763);
     p2904CommOmega->setUnit(0x2743);
+    p2904WallAngle->setUnit(0x2763);
 
     RollAngChar->addDescriptor(p2904AngleRoll);
     PitcAngChar->addDescriptor(p2904AnglePitc);
@@ -297,6 +313,7 @@ void Server_Initialize()
     RemTimeChar->addDescriptor(p2904IntTimRem);
     SetTimeChar->addDescriptor(p2904StrSetTim);
     HaveSubChar->addDescriptor(p2904IntHavSub);
+    WallAngChar->addDescriptor(p2904WallAngle);
 
     HaveSubChar->setValue(0);
 
@@ -449,6 +466,8 @@ void Check_Server_Characteristic()
     Serial.println(SetTimeChar->getValue().c_str());
     Serial.print("Sub  : ");
     Serial.println(HaveSubChar->getValue<int>());
+    Serial.print("Comm : ");
+    Serial.println(WallAngChar->getValue<float>());
 }
 
 bool act = false;
