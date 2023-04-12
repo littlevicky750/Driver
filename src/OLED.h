@@ -5,6 +5,10 @@
 #include <Wire.h>
 #include "MotorDriver.h"
 
+#ifndef OLED_RST
+#define OLED_RST -1
+#endif
+
 class OLED
 {
 public:

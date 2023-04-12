@@ -2,11 +2,10 @@
 #define OnOff_H
 #include <Arduino.h>
 #include "MotorDriver.h"
-#include "SDCard.h"
 #include "SerialDebug.h"
 #include "OLED.h"
 #include "RGBLED.h"
-
+#include "esp_bt.h"
 
 RTC_DATA_ATTR int bootCount = -1;
 
@@ -18,7 +17,6 @@ private:
     int OffClock = 0;
 
 public:
-    SDCard *pSD;
     MotorDriver *pMD;
     void On(gpio_num_t WakeUpPin)
     {
@@ -26,13 +24,8 @@ public:
         LED.SetUp();
         oledb.PowerSave(1);
         esp_sleep_enable_ext0_wakeup(WakeUpPin, 0);
-
         bootCount++;
         // Begine from sleeping
-        if (bootCount == 0)
-        {
-            esp_deep_sleep_start();
-        }
         pinMode(ButPin, INPUT);
         LED.Write(2, 255, 255, 255, LED.LIGHT30);
         LED.Update();
@@ -45,7 +38,7 @@ public:
                 delay(100);
             }
             LED.Off();
-            if (millis() < 1000)
+            if (millis() < 1000 && bootCount != 0)
             {
                 esp_deep_sleep_start();
             }
@@ -56,7 +49,6 @@ public:
         Serial.begin(115200);
         Serial.print("wake up ");
         Serial.println(bootCount);
-        
     }
 
     void Off_Clock_Start()
@@ -77,24 +69,17 @@ public:
         }
         if (millis() - OffClock > 3000)
         {
-            cli();
             if (pMD)
                 pMD->Emergency_Stop(1);
             Debug.println("Function Off");
-            if (pSD)
-            {
-                String T = "";
-                pSD->Save("", T);
-            }
-            OLED oledb;
-            oledb.PowerSave(1);
             detachInterrupt(digitalPinToInterrupt(ButPin));
+            oledb.PowerSave(1);
             LED.Off();
             LED.Write(2, 255, 255, 255, LED.LIGHT30);
             LED.Update();
+            esp_bt_controller_disable();
             while (digitalRead(ButPin) == 0)
             {
-                delay(100);
             }
             LED.Off();
             esp_deep_sleep_start();

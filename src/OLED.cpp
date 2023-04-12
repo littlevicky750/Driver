@@ -4,19 +4,22 @@
 #include <U8g2lib.h>
 #include "OLED_XBM.h"
 
+#if OLED_RST == -1
 U8G2_SSD1309_128X64_NONAME0_F_HW_I2C u8g2(U8G2_R0);
+#else
+U8G2_SSD1309_128X64_NONAME0_F_HW_I2C u8g2(U8G2_R0, OLED_RST);
+#endif
 
 void OLED::Initialize()
 {
     delay(500); // Wait for pullup
     PowerSave(0);
-    u8g2.setFlipMode(0);
     u8g2.enableUTF8Print();
-    u8g2.setFont(u8g2_font_6x12_tr);
+    u8g2.setFont(DefaultFont);
     u8g2.setFontDirection(0);
     u8g2.clearBuffer();
     int StrNum = 2;
-    String S[StrNum] = {"Wonder Construct", "Motor Driver V 3.2"};
+    String S[StrNum] = {"Motor Driver", "V 4.0"};
     int a = u8g2.getAscent();
     int l = (u8g2.getAscent() - u8g2.getDescent()) * 1.5;
     int h = (64 - l * (StrNum - 1) - a) / 2;
@@ -152,43 +155,53 @@ void OLED::DrawBar()
         }
     }
     u8g2.setDrawColor(1);
-    if (fPage == 0)
+
+    switch (fPage)
+    {
+    case 0:
         u8g2.drawBox(2, 3, 14, 2);
-    else
-        u8g2.drawXBM(2, 1, 14, 4, Up14x4);
-    if (fPage == 2)
+        for (int i = 0; i < 7; i++)
+            u8g2.drawBox(2 + i * 2, 59, 2, 5 - abs(3 - i));
+        break;
+    case 2:
+        for (int i = 0; i < 7; i++)
+            u8g2.drawBox(2 + i * 2, abs(3 - i), 2, 5 - abs(3 - i));
         u8g2.drawBox(2, 59, 14, 2);
-    else
-        u8g2.drawXBM(2, 59, 14, 4, Down14x4);
+        break;
+    default:
+        for (int i = 0; i < 7; i++)
+        {
+            u8g2.drawBox(2 + i * 2, abs(3 - i), 2, 5 - abs(3 - i));
+            u8g2.drawBox(2 + i * 2, 59, 2, 5 - abs(3 - i));
+        }
+        break;
+    }
 }
 
 void OLED::Page_Home()
 {
     u8g2.setFont(u8g2_font_5x8_tr);
-    DrawCenter(20, 8, 58, "CONTROLLER");
-    DrawCenter(79, 8, 48, "SENSOR");
-    u8g2.drawHLine(24, 9, 49);
-    u8g2.drawHLine(84, 9, 38);
+    DrawCenter(20, 6, 58, "CONTROLLER");
+    DrawCenter(80, 6, 48, "SENSOR");
+    u8g2.drawHLine(24, 7, 49);
+    u8g2.drawHLine(85, 7, 38);
     u8g2.setFont(u8g2_font_6x12_tr);
-    // Controller
     if (*(*isConnect + 1))
     {
-        DrawCenter(20, 45, 58, ("LLA:" + *(*Address + 2)).c_str());
+        DrawCenter(20, 47, 58, ("LLA:" + *(*Address + 2)).c_str());
         u8g2.setFont(u8g2_font_profont29_tr);
         DrawCenter(20, 34, 58, (*Address + 1)->c_str());
     }
     else
     {
         if (*isAdvertising)
-            DrawCenter(20, 45, 58, "Waiting");
+            DrawCenter(20, 47, 58, "Waiting");
         else
-            DrawCenter(20, 45, 58, "Disable");
+            DrawCenter(20, 47, 58, "Disable");
         u8g2.setFont(u8g2_font_profont22_tr);
         DrawCenter(20, 32, 58, (*Address + 2)->c_str());
     }
-    //
-    u8g2.drawBox(77, 0, 2, 50);
-    // Sensor
+    u8g2.drawBox(78, 0, 2, 50);
     if (*isConnect[0] && *isScanning)
     {
         if (*Angle[0] == 0)
@@ -209,10 +222,10 @@ void OLED::Page_Home()
             char A[8];
             for (int i = 0; i < 3; i++)
             {
-                u8g2.drawGlyph(81, 22 + i * 10, 88 + i);
-                u8g2.drawGlyph(86, 22 + i * 10, 0x003a);
+                u8g2.drawGlyph(83, 22 + i * 10, 88 + i);
+                u8g2.drawGlyph(88, 22 + i * 10, 0x003a);
                 dtostrf(*(*Angle + i), 7, 2, A);
-                u8g2.drawStr(91, 22 + i * 10, A);
+                u8g2.drawStr(93, 22 + i * 10, A);
             }
         }
     }
@@ -229,35 +242,34 @@ void OLED::Page_Home()
         u8g2.setFont(u8g2_font_open_iconic_all_2x_t);
         u8g2.drawGlyph(97, 35, 0x00eb);
     }
-    //
-    u8g2.drawBox(20, 48, 108, 2);
-    // Motor Driver
+
+    u8g2.drawBox(20, 50, 108, 2);
     u8g2.setFont(u8g2_font_8x13B_tr);
     if (!pMD->Swich)
     {
         if (Flash(1000))
-            DrawCenter(20, 62, 108, "LOCK");
+            DrawCenter(20, 64, 108, "LOCK");
     }
     else if (!pMD->Check)
     {
         if (Flash(500))
-            DrawCenter(20, 62, 108, "ERROR");
+            DrawCenter(20, 64, 108, "ERROR");
     }
     else if (*pMD_C_show == "00:00:00")
     {
-        DrawCenter(20, 62, 108, "READY");
+        DrawCenter(20, 64, 108, "READY");
     }
     else
     {
         u8g2.setFont(u8g2_font_7x14B_tr);
-        u8g2.drawStr(20, 62, pMD_C_show->c_str());
+        u8g2.drawStr(20, 64, pMD_C_show->c_str());
         u8g2.setFont(u8g2_font_unifont_t_86);
-        u8g2.drawGlyph(77, 63, 0x2b62);
+        u8g2.drawGlyph(77, 65, 0x2b62);
         u8g2.setFont(u8g2_font_8x13B_tr);
         if (*(*isConnect + 2))
-            u8g2.drawStr(128 - 8 * String(pMD->u_out).length(), 62, String(pMD->u_out).c_str());
+            u8g2.drawStr(128 - 8 * String(pMD->u_out).length(), 64, String(pMD->u_out).c_str());
         else
-            u8g2.drawStr(94, 62, "STOP");
+            u8g2.drawStr(94, 64, "STOP");
     }
 }
 
@@ -290,58 +302,58 @@ void OLED::Page_MD()
     }
 
     u8g2.setDrawColor(2);
-    u8g2.drawHLine(20, 20, 108);
+    u8g2.drawHLine(20, 22, 108);
     char Title[3][4] = {"Ve:", "Ie:", "Ee:"};
-    double V[3] = {max(pMD->Speed, 0) * 0.006, (double)pMD->Current, *Battery / 20.0 + 20.0};
-    int Vp[3] = {max(pMD->Speed, 0) * 84 / 1000, (int)V[1] * 84 / 5000, *Battery * 84 / 100};
+    double V[3] = {max(abs(pMD->SpeedR), 0.0F), (double)pMD->Current * 7.6 - 0.22, *Battery * 4.5 / 100.0 + 16.5};
+    int Vp[3] = {(int)(max(abs(pMD->SpeedR), 0.0F) * 86 / 120), (int)(V[1] * 86 / 10), *Battery * 86 / 100};
     for (int i = 0; i < 3; i++)
     {
-        u8g2.drawFrame(37, 25 + 13 * i, 88, 11);
+        u8g2.drawFrame(37, 27 + 13 * i, 90, 11);
         u8g2.setFont(u8g2_font_6x12_tr);
-        u8g2.drawStr(20, 34 + 13 * i, Title[i]);
+        u8g2.drawStr(20, 36 + 13 * i, Title[i]);
         u8g2.setFont(u8g2_font_tinyface_tr);
         String S = String(V[i], 1);
-        u8g2.drawStr(82 - 4 * S.length(), 33 + 13 * i, S.c_str());
-        u8g2.drawXBM(83, 28 + 13 * i, MD_unit_w[i], 5, MD_unit_XBM[i]);
-        u8g2.drawBox(39, 27 + 13 * i, Vp[i], 7);
+        u8g2.drawStr(82 - 4 * S.length(), 35 + 13 * i, S.c_str());
+        u8g2.drawXBM(83, 30 + 13 * i, MD_unit_w[i], 5, MD_unit_XBM[i]);
+        u8g2.drawBox(39, 29 + 13 * i, Vp[i], 7);
     }
 }
 
 void OLED::Page_BLE_S()
 {
     u8g2.setFont(u8g2_font_8x13B_tr);
-    u8g2.drawStr(20, 12, "Sensor");
-    u8g2.drawHLine(20, 13, 108);
+    u8g2.drawStr(20, 10, "Sensor");
+    u8g2.drawHLine(20, 12, 108);
 
     u8g2.setFont(u8g2_font_6x12_tr);
-    u8g2.drawStr(22, 24, "-LLA.........");
-    u8g2.drawStr(100, 24, (*Address + 2)->c_str());
+    u8g2.drawStr(20, 24, "-LLA..........");
+    u8g2.drawStr(104, 24, (*Address + 2)->c_str());
 
     char able[4] = "OFF";
 
     if (*isConnect[0] && *isScanning)
     {
-        u8g2.drawStr(22, 35, "-State....Connect");
-        u8g2.drawStr(22, 46, "--Address......");
-        u8g2.drawStr(100, 46, (*Address)->c_str());
+        u8g2.drawStr(20, 35, "-State.....Connect");
+        u8g2.drawStr(20, 46, "--Address.......");
+        u8g2.drawStr(104, 46, (*Address)->c_str());
         ;
     }
     else if (*isScanning)
     {
-        u8g2.drawStr(22, 35, "-State...Scanning");
+        u8g2.drawStr(20, 35, "-State....Scanning");
     }
     else
     {
-        u8g2.drawStr(22, 35, "-State....Disable");
+        u8g2.drawStr(20, 35, "-State.....Disable");
         memcpy(able, "ON", sizeof(able));
     }
     u8g2.setFont(u8g2_font_5x8_tr);
-    u8g2.drawFrame(54, 50, 40, 12);
-    DrawCenter(54, 59, 40, able);
+    u8g2.drawFrame(54, 52, 40, 12);
+    DrawCenter(54, 61, 40, able);
     if (*Cursor == 1)
     {
         u8g2.setDrawColor(2);
-        u8g2.drawBox(56, 52, 36, 8);
+        u8g2.drawBox(56, 54, 36, 8);
         u8g2.setDrawColor(1);
     }
 }
@@ -349,72 +361,87 @@ void OLED::Page_BLE_S()
 void OLED::Page_BLE_M()
 {
     u8g2.setFont(u8g2_font_8x13B_tr);
-    u8g2.drawStr(20, 12, "Controller");
-    u8g2.drawHLine(20, 13, 108);
+    u8g2.drawStr(20, 10, "Controller");
+    u8g2.drawHLine(20, 12, 108);
 
     u8g2.setFont(u8g2_font_6x12_tr);
-    u8g2.drawStr(22, 24, "-LLA.........");
-    u8g2.drawStr(100, 24, (*Address + 2)->c_str());
+    u8g2.drawStr(20, 24, "-LLA..........");
+    u8g2.drawStr(104, 24, (*Address + 2)->c_str());
 
     char able[4] = "OFF";
     if (*(*isConnect + 2))
     {
-        u8g2.drawStr(22, 35, "-State.....Moving");
-        u8g2.drawStr(22, 46, "--Address......");
-        u8g2.drawStr(112, 46, (*Address + 1)->c_str());
+        u8g2.drawStr(20, 35, "-State......Moving");
+        u8g2.drawStr(20, 46, "--Address.......");
+        u8g2.drawStr(116, 46, (*Address + 1)->c_str());
     }
     if (*(*isConnect + 1))
     {
-        u8g2.drawStr(22, 35, "-State....Connect");
-        u8g2.drawStr(22, 46, "--Address......");
-        u8g2.drawStr(112, 46, (*Address + 1)->c_str());
+        u8g2.drawStr(20, 35, "-State.....Connect");
+        u8g2.drawStr(20, 46, "--Address.......");
+        u8g2.drawStr(116, 46, (*Address + 1)->c_str());
     }
     else if (*isAdvertising)
     {
-        u8g2.drawStr(22, 35, "-State....Waiting");
+        u8g2.drawStr(20, 35, "-State.....Waiting");
     }
     else
     {
-        u8g2.drawStr(22, 35, "-State....Disable");
+        u8g2.drawStr(20, 35, "-State.....Disable");
         memcpy(able, "ON", sizeof(able));
     }
     u8g2.setFont(u8g2_font_5x8_tr);
-    u8g2.drawFrame(54, 50, 40, 12);
-    DrawCenter(54, 59, 40, able);
+    u8g2.drawFrame(54, 52, 40, 12);
+    DrawCenter(54, 61, 40, able);
     if (*Cursor == 1)
     {
         u8g2.setDrawColor(2);
-        u8g2.drawBox(56, 52, 36, 8);
+        u8g2.drawBox(56, 54, 36, 8);
         u8g2.setDrawColor(1);
     }
 }
 
 void OLED::Page_Setting()
 {
-    DrawArrorFrame(32, 6, 50, (*Cursor == 1));
-    DrawArrorFrame(32, 22, 50, (*Cursor == 2));
-    u8g2.setFont(u8g2_font_6x12_tr);
-    u8g2.drawStr(22, 16, "H:");
-    u8g2.drawStr(22, 32, "D:");
-    u8g2.drawStr(65, 16, "mm");
-    u8g2.drawStr(65, 32, "mm");
-    u8g2.drawStr(44 - (pMD->H > 999) * 6, 16, String(pMD->H).c_str());
-    u8g2.drawStr(44 - (pMD->D > 999) * 6, 32, String(pMD->D).c_str());
+    DrawArrorFrame(32, 8, 50, (*Cursor == 1));
+    u8g2.setFont(u8g2_font_6x12_t_cyrillic);
+    u8g2.drawStr(22, 18, "H:");
+    u8g2.drawGlyph(22, 38, 0x0472);
+    u8g2.drawStr(28, 38, "l:");
+    if (*(*isConnect + 1))
+    {
+        u8g2.drawGlyph(22, 50, 0x0472);
+        u8g2.drawStr(28, 50, "w:");
+    }
+
+    u8g2.setFont(u8g2_font_6x12_tf);
+    u8g2.drawStr(44 - (pMD->H > 999) * 6, 18, String(pMD->H).c_str());
+    u8g2.drawStr(65, 18, "mm");
+
+    char MonAng[6];
+    dtostrf(*pMD->MountedAngle, 5, 1, MonAng);
+    u8g2.drawStr(45, 38, MonAng);
+    u8g2.drawGlyph(75, 38, 0x00b0);
+    if (*(*isConnect + 1))
+    {
+        dtostrf(pMD->WallAngle, 5, 1, MonAng);
+        u8g2.drawStr(45, 50, MonAng);
+        u8g2.drawGlyph(75, 50, 0x00b0);
+    }
 
     if (*Cursor != 0)
     {
         u8g2.setDrawColor(2);
-        u8g2.drawBox(34, 16 * (*Cursor) - 8, 46, 9);
+        u8g2.drawBox(34, 16 * (*Cursor) - 6, 46, 9);
         u8g2.setDrawColor(1);
     }
 
-    u8g2.drawTriangle(120, 12, 120, 54, 78, 54);
+    u8g2.drawTriangle(122, 14, 122, 56, 80, 56);
     u8g2.setDrawColor(0);
-    u8g2.drawTriangle(118, 17, 118, 52, 83, 52);
+    u8g2.drawTriangle(120, 19, 120, 54, 85, 54);
     u8g2.setDrawColor(1);
     u8g2.setFont(u8g2_font_5x8_tr);
-    u8g2.drawStr(122, 38, "H");
-    DrawCenter(83, 62, 35, "D");
+    u8g2.drawStr(124, 40, "H");
 }
 
 void OLED::DrawArrorFrame(int x, int y, int L, bool Point)

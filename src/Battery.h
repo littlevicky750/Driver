@@ -5,7 +5,7 @@
 class Battery
 {
 private:
-    byte p;
+    byte p = -1;
     int TimeStamp = 0;
     int Count = 0;
     int Sum = 0;
@@ -19,6 +19,10 @@ public:
     }
     void Update()
     {
+        if (p == -1)
+        {
+            return;
+        }
         if (TimeStamp == 0)
         {
             TimeStamp = millis();
@@ -27,6 +31,7 @@ public:
         }
         else if (millis() - TimeStamp > 500)
         {
+            Serial.println(Sum/Count);
             Percent = (Sum / Count - 1850) / 4.75 + 0.5;
             Percent = max(min(Percent, 100),0);
             TimeStamp = millis();

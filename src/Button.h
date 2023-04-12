@@ -50,7 +50,8 @@ void UpdateEncoder()
     int CLValue = digitalRead(CL);
     if (CLValue != digitalRead(DT))
     {
-        Direction = CLValue;
+        //Direction = CLValue;
+        Direction = !CLValue;
     }
     else if (CLValue != OldValue)
     {
@@ -157,8 +158,9 @@ void Button_Update()
             }
             else if (Sw)
             {
-                Cursor = 0;
-                if (MD.u_out != 0)
+                if (MD.u_out == 0)
+                    Cursor = 0;
+                else
                     MD.Manual(0);
             }
             else if (Ct != 0)
@@ -170,22 +172,12 @@ void Button_Update()
         case 4:
             if (Sw)
             {
-                Cursor++;
-                Cursor %= 3;
+                Cursor = !Cursor;
             }
-            else if (Ct != 0)
+            else if (Ct != 0 && Cursor == 1)
             {
-                if (Cursor == 1)
-                {
-                    MD.H += Ct * 10;
-                    MD.H = max(min(MD.H, 2000), 200);
-                }
-                else if (Cursor == 2)
-                {
-                    MD.D += Ct * 10;
-                    MD.D = max(min(MD.D, 2000), 200);
-                    MD.MountedAngle = atan2(MD.H, MD.D);
-                }
+                MD.H += Ct * 10;
+                MD.H = max(min(MD.H, 2000), 200);
             }
             break;
         default:
