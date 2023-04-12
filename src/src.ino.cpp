@@ -1,17 +1,20 @@
-// Add I2C Current Sensor
-// Add I2C Voltage Sensor
+# 1 "C:\\Users\\littl\\AppData\\Local\\Temp\\tmpsh099nx1"
+#include <Arduino.h>
+# 1 "C:/Users/littl/HKUST/CHANG Ching Wei - Wonder Construct Team/Arduino codes/MotorDriver_v4.0/src/src.ino"
+
+
 
 const gpio_num_t IO_Extern_Wakeup = GPIO_NUM_0;
 const byte IO_Button_SW = GPIO_NUM_0;
 const byte IO_I2C_SCL = 9;
 const byte IO_I2C_SDA = 8;
-const byte IO_MD_V_FB = 7; //
-const byte IO_MD_Dir = 6;  // OutPut, PH
-const byte IO_MD_Brak = 5; // Output, LOW to wake up, HIGH to sleep.
-const byte IO_MD_V = 16;   // Output, EN
-const byte IO_MD_Swich = 18; // 
-const byte IO_MD_EN_Dir = -1;// 
-const byte IO_Battery_OCF = 17; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+const byte IO_MD_V_FB = 7;
+const byte IO_MD_Dir = 6;
+const byte IO_MD_Brak = 5;
+const byte IO_MD_V = 16;
+const byte IO_MD_Swich = 18;
+const byte IO_MD_EN_Dir = -1;
+const byte IO_Battery_OCF = 17;
 const byte IO_IMU_ISR = 20;
 const byte IO_IMU_SCK = 21;
 const byte IO_IMU_MISO = 10;
@@ -25,7 +28,7 @@ const byte IO_Button_DT = 41;
 #define OLED_RST 13
 #define IMU_CS 48
 
-// IMU with Serial0
+
 #include "MotorDriver.h"
 #include "SDCard.h"
 #include "OLED.h"
@@ -63,10 +66,20 @@ TaskHandle_t T_SAVE;
 TaskHandle_t T_BACK;
 
 String MD_Last_Recieve;
-
+static void Conn(void *pvParameter);
+static void Send(void *pvParameter);
+static void Check(void *pvParameter);
+static void MDCON(void *pvParameter);
+static void Slow(void *pvParameter);
+static void Loop(void *pvParameter);
+static void Fast(void *pvParameter);
+static void Back(void *pvParameter);
+void setup();
+void loop();
+#line 67 "C:/Users/littl/HKUST/CHANG Ching Wei - Wonder Construct Team/Arduino codes/MotorDriver_v4.0/src/src.ino"
 static void Conn(void *pvParameter)
 {
-  // Core 0
+
   Server_Initialize();
   Client_Initialize();
   for (;;)
@@ -78,7 +91,7 @@ static void Conn(void *pvParameter)
 
 static void Send(void *pvParameter)
 {
-  // Core 0
+
   vTaskDelay(10000);
   for (;;)
   {
@@ -90,7 +103,7 @@ static void Send(void *pvParameter)
 
 static void Check(void *pvParameter)
 {
-  // Core 0
+
   for (;;)
   {
     vTaskDelay(30 * 60 * 1000);
@@ -100,7 +113,7 @@ static void Check(void *pvParameter)
 
 static void MDCON(void *pvParameter)
 {
-  // Core 1
+
   TickType_t xLastWakeTime;
   BaseType_t xWasDelayed;
   xLastWakeTime = xTaskGetTickCount();
@@ -120,7 +133,7 @@ static void MDCON(void *pvParameter)
 
 static void Slow(void *pvParameter)
 {
-  // Core 1
+
   for (;;)
   {
     Swich.OffCheck();
@@ -132,7 +145,7 @@ static void Slow(void *pvParameter)
 
 static void Loop(void *pvParameter)
 {
-  // Core 1
+
   delay(1000);
   for (;;)
   {
@@ -145,7 +158,7 @@ static void Loop(void *pvParameter)
 
 static void Fast(void *pvParameter)
 {
-  // Core 1
+
   delay(1000);
   TickType_t xLastWakeTime;
   BaseType_t xWasDelayed;
@@ -177,9 +190,9 @@ static void Back(void *pvParameter)
 void setup()
 {
   Swich.On(GPIO_NUM_0);
-  //Swich.pSD = &sdCard;
+
   Swich.pMD = &MD;
-  //Debug.Setup(sdCard);
+
   Debug.printOnTop("-------------------------ESP_Start-------------------------");
   MD.Initialize(IO_MD_V, IO_MD_Dir, IO_MD_Brak, IO_MD_V_FB, IO_MD_Swich, IO_MD_EN_Dir);
   MD.MountedAngle = &imu.Angle[0];

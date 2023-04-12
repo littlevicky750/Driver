@@ -50,7 +50,8 @@ void UpdateEncoder()
     int CLValue = digitalRead(CL);
     if (CLValue != digitalRead(DT))
     {
-        Direction = CLValue;
+        //Direction = CLValue;
+        Direction = !CLValue;
     }
     else if (CLValue != OldValue)
     {
@@ -171,8 +172,7 @@ void Button_Update()
         case 4:
             if (Sw)
             {
-                Cursor++;
-                Cursor %= 2;
+                Cursor = !Cursor;
             }
             else if (Ct != 0 && Cursor == 1)
             {

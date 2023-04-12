@@ -2,7 +2,7 @@
 #define IMU42688_h
 #include <Arduino.h>
 #include "WC_IMU.h"
-
+#include "WC_ICM42688.h"
 
 #ifndef IMU_C
 #define IMU_C 3
@@ -14,6 +14,9 @@ private:
     float AngleMeasure[IMU_C][3];
     int IMUStart = 0;
     int CopeFailed = 0;
+    double acc[3] = {0};
+    double gyro[3] = {0};
+    int16_t tempRaw;
 
 public:
     float Angle[3] = {0, 0, 0};
@@ -28,12 +31,9 @@ public:
     const byte Err_IMU_Cope_Failed = 4;
     byte ErrorCode = Err_IMU_Not_Warm_Up;
     byte fWarmUp;
-    void Initialize(byte Rx /*(-1)*/, byte Tx /*(-1)*/);
+    void Initialize(byte SCK, byte MISO, byte MOSI, byte CS);
     byte Update();
-    float getHorizontal();
-    float getVertical();
-    float getHorizontalFilt();
-    float getVerticalFilt();
+    void Update42688();
 };
 
 #endif
