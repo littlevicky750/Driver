@@ -1,9 +1,11 @@
 #include "MotorDriver.h"
 #include "RGBLED.h"
 #include "AS5600.h"
-#include "Wire.h"
+#include <Wire.h>
+#include <Adafruit_ADS1X15.h>
 
 MotorDriverSpeed MDSpeed;
+Adafruit_ADS1115 ads;
 AS5600 as5600;
 
 void IRAM_ATTR MD_Speed_ISR()
@@ -26,30 +28,28 @@ void IRAM_ATTR MD_Speed_ISR()
     }
 }
 
-void MotorDriver::Initialize(byte IO_V, byte IO_Dir, byte IO_Brak, byte IO_V_FB, byte IO_I_FB, byte IO_SW, byte IO_EN_Dir)
+void MotorDriver::Initialize(byte IO_V, byte IO_Dir, byte IO_Brak, byte IO_V_FB, byte IO_SW, byte IO_EN_Dir)
 {
     MD_Brak = IO_Brak;
     MD_Dir = IO_Dir;
-    MD_I_FB = IO_I_FB;
     MD_V = IO_V;
     SpeedFB = &MDSpeed;
-    ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOUTION);
-    ledcAttachPin(IO_V, PWM_CHANNEL);
     pinMode(IO_Dir, OUTPUT);
     pinMode(IO_V, OUTPUT);
     pinMode(IO_Brak, OUTPUT);
     pinMode(IO_V_FB, INPUT);
-    pinMode(IO_I_FB, INPUT);
     Swich = digitalRead(IO_SW);
     digitalWrite(IO_Brak, LOW);
     digitalWrite(MD_Dir, LOW);
     attachInterrupt(digitalPinToInterrupt(IO_V_FB), MD_Speed_ISR, RISING);
     // as5600
-    as5600.begin(IO_EN_Dir);
+    as5600.begin((IO_EN_Dir == -1) ? 255 : IO_EN_Dir);
     as5600.setDirection(AS5600_CLOCK_WISE); // default
-    int b = as5600.isConnected();
-    Serial.print("Connect: ");
-    Serial.println(b);
+    isAS5600Begin = as5600.isConnected();
+    // ads 1115
+    if (!ads.begin())
+        Serial.println("ADS1115 begin error.");
+    ReadBattery();
 }
 
 void MotorDriver::Check_Connect()
@@ -63,7 +63,7 @@ void MotorDriver::Check_Connect()
         Check = true;
         digitalWrite(MD_Dir, HIGH);
         analogWrite(MD_V, 10);
-        delay(150);
+        delay(200);
     }
     analogWrite(MD_V, 0);
 }
@@ -71,8 +71,6 @@ void MotorDriver::Check_Connect()
 void MotorDriver::AccControl()
 {
     Update_Feedback();
-    Serial.print("\tω = ");
-    Serial.println(as5600.getAngularSpeed());
     if (Vc != 0)
     {
         u_out = Vc * VrtoVl / 4.0 + 0.5;
@@ -135,7 +133,6 @@ void MotorDriver::AccControl()
         {
             digitalWrite(MD_Dir, LOW);
         }
-        // ledcWrite(PWM_MD, abs(u_t1));
         analogWrite(MD_V, abs(u_t1));
         if (abs(u_t0 - u_t1) > 10)
         {
@@ -150,8 +147,8 @@ void MotorDriver::AccControl()
 bool MotorDriver::Output(float AngularVelocity)
 {
     LED.Write(2, 0, 0, 256, LED.BLINK30);
-    // Vc = -AngularVelocity * H * cos(MountedAngle); // if MountedAngle is a constant. (Assume Angle[0] ~ 90)
-    Vc = - AngularVelocity * H * sin((WallAngle - *MountedAngle)*PI/180); // if MountedAngle can be measure
+    Vc = -AngularVelocity * H * cos(45 * PI / 180); // if MountedAngle is a constant. (Assume Angle[0] ~ 90)
+    // Vc = -AngularVelocity * H * sin((WallAngle - *MountedAngle) * PI / 180); // if MountedAngle can be measure
     if (Vc == 0 || abs(Vc) < MinimumVelocity)
     {
         u_out = 0;
@@ -188,26 +185,79 @@ bool MotorDriver::Manual(double Speed)
     return 1;
 }
 
+void MotorDriver::ReadBattery()
+{
+    float MDCurrent = ads.computeVolts(adc2);
+    Battery = ads.computeVolts(adc3);
+    BatteryPercent = (Battery - 1.78) / 0.5 * 100.0;
+    BatteryPercent = min(max(BatteryPercent, 0), 100);
+    /*
+    Serial.print("adc1: ");
+    Serial.print(Current);
+    Serial.print(" ,adc2: ");
+    Serial.print(MDCurrent);
+    Serial.print(" ,adc3(Battery): ");
+    Serial.println(Battery);
+    //*/
+}
+
 void MotorDriver::CurrentFB()
 {
-    if (CFB_StartTime == 0)
+    // Velocity Feed Back (Encoder)
+    if (Speed == -1)
     {
-        CFB_Sum = analogRead(MD_I_FB);
-        CFB_Count = 1;
-        CFB_StartTime = millis();
+        memset(VFB_Read, 0, sizeof(VFB_Read));
+        memset(VFB_BW, 0, sizeof(VFB_BW));
+        SpeedR = -1;
     }
-    else if (millis() - CFB_StartTime > 1000)
+    else if (isAS5600Begin)
     {
-        Current = CFB_Sum / CFB_Count;
-        CFB_Sum = analogRead(MD_I_FB);
-        CFB_Count = 1;
-        CFB_StartTime = millis();
+        memcpy(&VFB_Read[1], &VFB_Read[0], sizeof(VFB_Read[0]) * 4);
+        memcpy(&VFB_BW[1], &VFB_BW[0], sizeof(VFB_BW[0]) * 4);
+        VFB_Read[0] = as5600.getAngularSpeed(AS5600_MODE_RPM);
+        // butterworth
+        float a_i[4] = {2.41959115, -2.39452813, 1.1034105, -0.19778313};
+        float b_i[5] = {0.00433185, 0.0173274, 0.02599111, 0.0173274, 0.00433185};
+        VFB_BW[0] = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            VFB_BW[0] += a_i[i] * VFB_BW[i + 1];
+        }
+        for (int i = 0; i < 5; i++)
+        {
+            VFB_BW[0] += b_i[i] * VFB_Read[i];
+        }
+        SpeedR = VFB_BW[0];
     }
+    // Current Feed Back
+    // Average filter with windows of 10 have a similar performance with 5th Butterworth filter.
+    memcpy(&CFB_Read[1], &CFB_Read[0], sizeof(CFB_Read[0]) * 9);
+    adc1 = ads.readADC_SingleEnded(1);
+    adc2 = ads.readADC_SingleEnded(2);
+    adc3 = ads.readADC_SingleEnded(3);
+    float CFB_temp = ads.computeVolts(adc1);
+
+    if (CFB_temp > 1.5)
+        CFB_Read[0] = CFB_Read[1];
+    else if (CFB_temp < 0.029)
+        CFB_Read[0] = 0.029;
     else
+        CFB_Read[0] = CFB_temp;
+    float CFB_sum = 0;
+    for (int i = 0; i < 10; i++)
     {
-        CFB_Sum += analogRead(MD_I_FB);
-        CFB_Count++;
+        CFB_sum += CFB_Read[i];
     }
+    Current = CFB_sum / 10;
+    // MD Current Feedback
+
+    /*
+    Serial.print("Velocity:");
+    Serial.println(VFB_BW[0]);
+    /*
+    Serial.print(",Current_x_10:");
+    Serial.println(Current * 10);
+    //*/
 }
 
 void MotorDriver::Emergency_Stop(bool isStop)

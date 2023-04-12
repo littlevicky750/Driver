@@ -19,7 +19,7 @@ void OLED::Initialize()
     u8g2.setFontDirection(0);
     u8g2.clearBuffer();
     int StrNum = 2;
-    String S[StrNum] = {"Motor Driver", "V 3.1"};
+    String S[StrNum] = {"Motor Driver", "V 4.0"};
     int a = u8g2.getAscent();
     int l = (u8g2.getAscent() - u8g2.getDescent()) * 1.5;
     int h = (64 - l * (StrNum - 1) - a) / 2;
@@ -304,8 +304,8 @@ void OLED::Page_MD()
     u8g2.setDrawColor(2);
     u8g2.drawHLine(20, 22, 108);
     char Title[3][4] = {"Ve:", "Ie:", "Ee:"};
-    double V[3] = {max(pMD->Speed, 0) * 0.006, (double)pMD->Current, *Battery / 20.0 + 20.0};
-    int Vp[3] = {max(pMD->Speed, 0) * 86 / 1000, (int)V[1] * 86 / 5000, *Battery * 86 / 100};
+    double V[3] = {max(abs(pMD->SpeedR), 0.0F), (double)pMD->Current * 7.6 - 0.22, *Battery * 4.5 / 100.0 + 16.5};
+    int Vp[3] = {(int)(max(abs(pMD->SpeedR), 0.0F) * 86 / 120), (int)(V[1] * 86 / 10), *Battery * 86 / 100};
     for (int i = 0; i < 3; i++)
     {
         u8g2.drawFrame(37, 27 + 13 * i, 90, 11);
@@ -404,16 +404,30 @@ void OLED::Page_BLE_M()
 void OLED::Page_Setting()
 {
     DrawArrorFrame(32, 8, 50, (*Cursor == 1));
-    DrawArrorFrame(32, 24, 50, (*Cursor == 2));
-    u8g2.setFont(u8g2_font_6x12_tr);
+    u8g2.setFont(u8g2_font_6x12_t_cyrillic);
     u8g2.drawStr(22, 18, "H:");
-    u8g2.drawStr(22, 34, "D:");
-    u8g2.drawStr(65, 18, "mm");
-    u8g2.drawStr(65, 34, "mm");
-    u8g2.drawStr(44 - (pMD->H > 999) * 6, 18, String(pMD->H).c_str());
-    u8g2.drawStr(44 - (pMD->D > 999) * 6, 34, String(pMD->D).c_str());
+    u8g2.drawGlyph(22, 38, 0x0472);
+    u8g2.drawStr(28, 38, "l:");
+    if (*(*isConnect + 1))
+    {
+        u8g2.drawGlyph(22, 50, 0x0472);
+        u8g2.drawStr(28, 50, "w:");
+    }
 
-    u8g2.drawStr(22, 50, String(pMD->WallAngle, 2).c_str());
+    u8g2.setFont(u8g2_font_6x12_tf);
+    u8g2.drawStr(44 - (pMD->H > 999) * 6, 18, String(pMD->H).c_str());
+    u8g2.drawStr(65, 18, "mm");
+
+    char MonAng[6];
+    dtostrf(*pMD->MountedAngle, 5, 1, MonAng);
+    u8g2.drawStr(45, 38, MonAng);
+    u8g2.drawGlyph(75, 38, 0x00b0);
+    if (*(*isConnect + 1))
+    {
+        dtostrf(pMD->WallAngle, 5, 1, MonAng);
+        u8g2.drawStr(45, 50, MonAng);
+        u8g2.drawGlyph(75, 50, 0x00b0);
+    }
 
     if (*Cursor != 0)
     {
@@ -428,7 +442,6 @@ void OLED::Page_Setting()
     u8g2.setDrawColor(1);
     u8g2.setFont(u8g2_font_5x8_tr);
     u8g2.drawStr(124, 40, "H");
-    DrawCenter(85, 64, 35, "D");
 }
 
 void OLED::DrawArrorFrame(int x, int y, int L, bool Point)

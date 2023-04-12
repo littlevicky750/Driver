@@ -46,7 +46,7 @@ BLE2904 *p2904StrSetTim = new BLE2904();
 BLE2904 *p2904WallAngle = new BLE2904();
 
 TaskHandle_t COMMAND_TIMER;
-int StepTime = 100;
+int StepTime = 200;
 int StepTimeTH = 100;
 
 String Address[3] = {"....", "...", "...."}; // { 0: Subsensor / 1 : MainSensor / 2 : Local}
@@ -353,7 +353,7 @@ void Client_Connect()
     {
         BLEDevice::stopAdvertising();
     }
-    Serial.println("Searching for subsensor ...");
+    //Serial.println("Searching for subsensor ...");
     LED.Write(0, 255, 255, 0, LED.BLINK30);
 
     pBLEScan->start(1, false);

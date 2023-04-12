@@ -41,7 +41,6 @@ private:
     const byte PWM_CHANNEL = 0;
     byte MD_Brak;
     byte MD_Dir;
-    byte MD_I_FB;
     byte MD_V;
 
     float MaximumVelocity = 5; // mm/s
@@ -49,10 +48,12 @@ private:
     int Max_Acc = 255;
     // u_out = AngularVelocity - 10
     int u_t0 = 0;
-    int CFB_Count = 0;
-    int CFB_StartTime = 0;
-    int CFB_Sum = 0;
+    int16_t adc1, adc2, adc3;
+    float CFB_Read[10] = {0};
+    float VFB_Read[5] = {0};
+    float VFB_BW[5] = {0};
 
+    bool isAS5600Begin = false;
     int Vc = 0;
 
     int VrtoVl = 95; // Speed Feed Back Value to Linear Velocity
@@ -62,20 +63,25 @@ public:
     bool Check = false;
     int u_out = 0;
     int Speed = -1;
-    int Current = -1;
+    float SpeedR = -1;
+    float Current = -1;
+    float Battery = -1;
+    int BatteryPercent = -1;
+    float MDCurrent = -1;
     int H = 1500; // mm
-    int D = 860;  // mm
-    float* MountedAngle;
+    // int D = 860;  // mm
+    float *MountedAngle;
     float WallAngle = 90;
     MotorDriverSpeed *SpeedFB;
 
-    void Initialize(byte IO_V, byte IO_Dir, byte IO_Brak, byte IO_V_FB, byte IO_I_FB, byte IO_SW, byte IO_EN_Dir);
+    void Initialize(byte IO_V, byte IO_Dir, byte IO_Brak, byte IO_V_FB, byte IO_SW, byte IO_EN_Dir);
     void AccControl();
     bool Output(float AngularVelocity);
     bool Manual(double Speed);
     void Emergency_Stop(bool isStop);
     void Update_Feedback();
     void CurrentFB();
+    void ReadBattery();
     void Check_Connect();
 };
 
