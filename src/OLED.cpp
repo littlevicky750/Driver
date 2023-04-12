@@ -4,7 +4,7 @@
 #include <U8g2lib.h>
 #include "OLED_XBM.h"
 
-U8G2_SSD1309_128X64_NONAME0_F_HW_I2C u8g2(U8G2_R0);
+U8G2_SSD1309_128X64_NONAME0_F_HW_I2C u8g2(U8G2_R0/*,reset*/);
 
 void OLED::Initialize()
 {
