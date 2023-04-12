@@ -1,5 +1,6 @@
 #include "MotorDriver.h"
 #include "RGBLED.h"
+#include "Wire.h"
 
 MotorDriverSpeed MDSpeed;
 
